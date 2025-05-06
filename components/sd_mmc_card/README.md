@@ -170,7 +170,7 @@ sd_mmc_card.remove_directory:
 
 ```yaml
 sensor:
-  - platform: sd_mmc_card
+  - platform: storage_base
     type: used_space
     name: "SD card used space"
 ```
@@ -183,7 +183,7 @@ Total used space of the sd card in bytes
 
 ```yaml
 sensor:
-  - platform: sd_mmc_card
+  - platform: storage_base
     type: total_space
     name: "SD card total space"
 ```
@@ -196,7 +196,7 @@ Total capacity of the sd card
 
 ```yaml
 sensor:
-  - platform: sd_mmc_card
+  - platform: storage_base
     type: free_space
     name: "SD card free space"
 ```
@@ -209,7 +209,7 @@ Free capacity of the sd card
 
 ```yaml
 sensor:
-  - platform: sd_mmc_card
+  - platform: storage_base
     type: file_size
     path: "/test.txt"
 ```
