@@ -1,3 +1,5 @@
+sd_file_server.cpp
+
 #include "sd_file_server.h"
 #include <map>
 #include "esphome/core/log.h"
@@ -43,8 +45,7 @@ void SDFileServer::handleRequest(AsyncWebServerRequest *request) {
   }
 }
 
-void SDFileServer::handleUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
-                                size_t len, bool final) {
+void SDFileServer::handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data, size_t len, bool final) {
   if (!this->upload_enabled_) {
     request->send(401, "application/json", "{ \"error\": \"file upload is disabled\" }");
     return;
@@ -143,7 +144,7 @@ void SDFileServer::write_row(AsyncResponseStream *response, sd_mmc_card::FileInf
 
 void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string const &path) const {
   AsyncResponseStream *response = request->beginResponseStream("text/html");
-  response->print(F(R"(
+  response->print((R"(
   <!DOCTYPE html>
   <html lang=\"en\">
   <head>
@@ -278,13 +279,13 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
       response->print("</a>");
     }
   }
-  response->print(F("</div>"));
+  response->print(("</div>"));
 
   if (this->upload_enabled_)
-    response->print(F("<div class=\"upload-form\"><form method=\"POST\" enctype=\"multipart/form-data\">"
+    response->print(("<div class=\"upload-form\"><form method=\"POST\" enctype=\"multipart/form-data\">"
                       "<input type=\"file\" name=\"file\"><input type=\"submit\" value=\"upload\"></form></div>"));
 
-  response->print(F("<table><thead><tr>"
+  response->print(("<table><thead><tr>"
                     "<th>Name</th>"
                     "<th>Type</th>"
                     "<th>Size</th>"
@@ -295,7 +296,7 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
   for (auto const &entry : entries)
     write_row(response, entry);
 
-  response->print(F("</tbody></table>"
+  response->print(("</tbody></table>"
                     "<script>"
                     "function delete_file(path) {fetch(path, {method: \"DELETE\"});}"
                     "function download_file(path, filename) {"
