@@ -1,5 +1,3 @@
-sd_file_server.cpp
-
 #include "sd_file_server.h"
 #include <map>
 #include "esphome/core/log.h"
