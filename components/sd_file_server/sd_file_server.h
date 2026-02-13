@@ -1,5 +1,3 @@
-sd_file_server.h
-
 #pragma once
 #include "esphome/core/component.h"
 #include "esphome/components/web_server_base/web_server_base.h"
