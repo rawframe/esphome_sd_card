@@ -113,6 +113,10 @@ class SdMmc : public Component {
   static std::string error_code_to_string(ErrorCode);
 };
 
+//
+// FIXED ACTION CLASSES — ONLY play() SIGNATURES CHANGED
+//
+
 template<typename... Ts> class SdMmcWriteFileAction : public Action<Ts...> {
  public:
   SdMmcWriteFileAction(SdMmc *parent) : parent_(parent) {}
@@ -135,7 +139,7 @@ template<typename... Ts> class SdMmcAppendFileAction : public Action<Ts...> {
   TEMPLATABLE_VALUE(std::string, path)
   TEMPLATABLE_VALUE(std::vector<uint8_t>, data)
 
-  void play(Ts... x) {
+  void play(const Ts &... x) override {
     auto path = this->path_.value(x...);
     auto buffer = this->data_.value(x...);
     this->parent_->append_file(path.c_str(), buffer.data(), buffer.size());
@@ -150,7 +154,7 @@ template<typename... Ts> class SdMmcCreateDirectoryAction : public Action<Ts...>
   SdMmcCreateDirectoryAction(SdMmc *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, path)
 
-  void play(Ts... x) {
+  void play(const Ts &... x) override {
     auto path = this->path_.value(x...);
     this->parent_->create_directory(path.c_str());
   }
@@ -164,7 +168,7 @@ template<typename... Ts> class SdMmcRemoveDirectoryAction : public Action<Ts...>
   SdMmcRemoveDirectoryAction(SdMmc *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, path)
 
-  void play(Ts... x) {
+  void play(const Ts &... x) override {
     auto path = this->path_.value(x...);
     this->parent_->remove_directory(path.c_str());
   }
@@ -178,7 +182,7 @@ template<typename... Ts> class SdMmcDeleteFileAction : public Action<Ts...> {
   SdMmcDeleteFileAction(SdMmc *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, path)
 
-  void play(Ts... x) {
+  void play(const Ts &... x) override {
     auto path = this->path_.value(x...);
     this->parent_->delete_file(path.c_str());
   }
