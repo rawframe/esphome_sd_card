@@ -58,6 +58,13 @@ bool SDFileServer::canHandle(AsyncWebServerRequest *request) const {
   return str_startswith(std::string(request->url().c_str()), this->build_prefix());
 }
 
+bool SDFileServer::canUpload(AsyncWebServerRequest *request) const {
+  ESP_LOGD(TAG, "can upload %s %u", request->url().c_str(),
+           str_startswith(std::string(request->url().c_str()), this->build_prefix()));
+  return str_startswith(std::string(request->url().c_str()), this->build_prefix());
+}
+
+
 void SDFileServer::handleRequest(AsyncWebServerRequest *request) {
   ESP_LOGD(TAG, "%s", request->url().c_str());
   if (str_startswith(std::string(request->url().c_str()), this->build_prefix())) {
