@@ -1,200 +1,72 @@
 #pragma once
-#include "esphome/core/gpio.h"
-#include "esphome/core/defines.h"
-#include "esphome/core/component.h"
-#include "esphome/core/automation.h"
-#ifdef USE_SENSOR
-#include "esphome/components/sensor/sensor.h"
-#endif
-#ifdef USE_TEXT_SENSOR
-#include "esphome/components/text_sensor/text_sensor.h"
-#endif
 
-#ifdef USE_ESP_IDF
-#include "sdmmc_cmd.h"
-#endif
+#include "esphome/core/component.h"
+#include "esphome/components/web_server_base/web_server_base.h"
+#include "esphome/components/sd_mmc_card/sd_mmc_card.h"
+#include <string>
+#include <vector>
 
 namespace esphome {
-namespace sd_mmc_card {
+namespace sd_file_server {
 
-enum MemoryUnits : short { Byte = 0, KiloByte = 1, MegaByte = 2, GigaByte = 3, TeraByte = 4, PetaByte = 5 };
-
-#ifdef USE_SENSOR
-struct FileSizeSensor {
-  sensor::Sensor *sensor{nullptr};
-  std::string path;
-
-  FileSizeSensor() = default;
-  FileSizeSensor(sensor::Sensor *, std::string const &path);
-};
-#endif
-
-struct FileInfo {
-  std::string path;
-  size_t size;
-  bool is_directory;
-
-  FileInfo(std::string const &, size_t, bool);
-};
-
-class SdMmc : public Component {
-#ifdef USE_SENSOR
-  SUB_SENSOR(used_space)
-  SUB_SENSOR(total_space)
-  SUB_SENSOR(free_space)
-#endif
-#ifdef USE_TEXT_SENSOR
-  SUB_TEXT_SENSOR(sd_card_type)
-#endif
+class Path {
  public:
-  enum ErrorCode {
-    ERR_PIN_SETUP,
-    ERR_MOUNT,
-    ERR_NO_CARD,
-  };
+  static std::string file_name(std::string const &path);
+  static bool is_absolute(std::string const &path);
+  static bool trailing_slash(std::string const &path);
+  static std::string join(std::string const &first, std::string const &second);
+  static std::string remove_root_path(std::string path, std::string const &root);
+  static std::vector<std::string> split_path(std::string path);
+  static std::string extension(std::string const &file);
+  static std::string file_type(std::string const &file);
+  static std::string mime_type(std::string const &file);
+
+  static const char separator = '/';
+};
+
+class SDFileServer : public Component, public AsyncWebHandler {
+ public:
+  SDFileServer(web_server_base::WebServerBase *base);
+
   void setup() override;
-  void loop() override;
   void dump_config() override;
-  void write_file(const char *path, const uint8_t *buffer, size_t len, const char *mode);
-  void write_file(const char *path, const uint8_t *buffer, size_t len);
-  void append_file(const char *path, const uint8_t *buffer, size_t len);
-  bool delete_file(const char *path);
-  bool delete_file(std::string const &path);
-  bool create_directory(const char *path);
-  bool remove_directory(const char *path);
-  std::vector<uint8_t> read_file(char const *path);
-  std::vector<uint8_t> read_file(std::string const &path);
-  bool is_directory(const char *path);
-  bool is_directory(std::string const &path);
-  std::vector<std::string> list_directory(const char *path, uint8_t depth);
-  std::vector<std::string> list_directory(std::string path, uint8_t depth);
-  std::vector<FileInfo> list_directory_file_info(const char *path, uint8_t depth);
-  std::vector<FileInfo> list_directory_file_info(std::string path, uint8_t depth);
-  size_t file_size(const char *path);
-  size_t file_size(std::string const &path);
-#ifdef USE_SENSOR
-  void add_file_size_sensor(sensor::Sensor *, std::string const &path);
-#endif
+  float get_setup_priority() const override { return setup_priority::LATE; }
 
-  void set_clk_pin(uint8_t);
-  void set_cmd_pin(uint8_t);
-  void set_data0_pin(uint8_t);
-  void set_data1_pin(uint8_t);
-  void set_data2_pin(uint8_t);
-  void set_data3_pin(uint8_t);
-  void set_mode_1bit(bool);
-  void set_power_ctrl_pin(GPIOPin *);
+  void set_url_prefix(std::string const &prefix);
+  void set_root_path(std::string const &path);
+  void set_sd_mmc_card(sd_mmc_card::SdMmc *card);
+  void set_deletion_enabled(bool allow);
+  void set_download_enabled(bool allow);
+  void set_upload_enabled(bool allow);
+
+  bool canHandle(AsyncWebServerRequest *request) const override;
+  void handleRequest(AsyncWebServerRequest *request) override;
+  void handleUpload(AsyncWebServerRequest *request, const String &filename,
+                    size_t index, uint8_t *data, size_t len, bool final) override;
+
+  bool isRequestHandlerTrivial() override { return false; }
 
  protected:
-  ErrorCode init_error_;
-  uint8_t clk_pin_;
-  uint8_t cmd_pin_;
-  uint8_t data0_pin_;
-  uint8_t data1_pin_;
-  uint8_t data2_pin_;
-  uint8_t data3_pin_;
-  bool mode_1bit_;
-  GPIOPin *power_ctrl_pin_{nullptr};
+  web_server_base::WebServerBase *base_;
+  sd_mmc_card::SdMmc *sd_mmc_card_{nullptr};
 
-#ifdef USE_ESP_IDF
-  sdmmc_card_t *card_;
-#endif
-#ifdef USE_SENSOR
-  std::vector<FileSizeSensor> file_size_sensors_{};
-#endif
-  void update_sensors();
-#ifdef USE_ESP32_FRAMEWORK_ARDUINO
-  std::string sd_card_type_to_string(int) const;
-#endif
-#ifdef USE_ESP_IDF
-  std::string sd_card_type() const;
-#endif
-  std::vector<FileInfo> &list_directory_file_info_rec(const char *path, uint8_t depth, std::vector<FileInfo> &list);
-  static std::string error_code_to_string(ErrorCode);
+  std::string url_prefix_{"sd"};
+  std::string root_path_{"\/sdcard"};
+
+  bool deletion_enabled_{false};
+  bool download_enabled_{true};
+  bool upload_enabled_{false};
+
+  void handle_get(AsyncWebServerRequest *request) const;
+  void handle_delete(AsyncWebServerRequest *request);
+  void handle_index(AsyncWebServerRequest *request, std::string const &path) const;
+  void handle_download(AsyncWebServerRequest *request, std::string const &path) const;
+
+  void write_row(AsyncResponseStream *response, sd_mmc_card::FileInfo const &info) const;
+
+  std::string build_prefix() const;
+  std::string extract_path_from_url(std::string const &url) const;
+  std::string build_absolute_path(std::string relative_path) const;
 };
 
-//
-// FIXED ACTION CLASSES — ONLY play() SIGNATURES CHANGED
-//
-
-template<typename... Ts> class SdMmcWriteFileAction : public Action<Ts...> {
- public:
-  SdMmcWriteFileAction(SdMmc *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(std::string, path)
-  TEMPLATABLE_VALUE(std::vector<uint8_t>, data)
-
-  void play(const Ts &... x) override {
-    auto path = this->path_.value(x...);
-    auto buffer = this->data_.value(x...);
-    this->parent_->write_file(path.c_str(), buffer.data(), buffer.size());
-  }
-
- protected:
-  SdMmc *parent_;
-};
-
-template<typename... Ts> class SdMmcAppendFileAction : public Action<Ts...> {
- public:
-  SdMmcAppendFileAction(SdMmc *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(std::string, path)
-  TEMPLATABLE_VALUE(std::vector<uint8_t>, data)
-
-  void play(const Ts &... x) override {
-    auto path = this->path_.value(x...);
-    auto buffer = this->data_.value(x...);
-    this->parent_->append_file(path.c_str(), buffer.data(), buffer.size());
-  }
-
- protected:
-  SdMmc *parent_;
-};
-
-template<typename... Ts> class SdMmcCreateDirectoryAction : public Action<Ts...> {
- public:
-  SdMmcCreateDirectoryAction(SdMmc *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(std::string, path)
-
-  void play(const Ts &... x) override {
-    auto path = this->path_.value(x...);
-    this->parent_->create_directory(path.c_str());
-  }
-
- protected:
-  SdMmc *parent_;
-};
-
-template<typename... Ts> class SdMmcRemoveDirectoryAction : public Action<Ts...> {
- public:
-  SdMmcRemoveDirectoryAction(SdMmc *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(std::string, path)
-
-  void play(const Ts &... x) override {
-    auto path = this->path_.value(x...);
-    this->parent_->remove_directory(path.c_str());
-  }
-
- protected:
-  SdMmc *parent_;
-};
-
-template<typename... Ts> class SdMmcDeleteFileAction : public Action<Ts...> {
- public:
-  SdMmcDeleteFileAction(SdMmc *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(std::string, path)
-
-  void play(const Ts &... x) override {
-    auto path = this->path_.value(x...);
-    this->parent_->delete_file(path.c_str());
-  }
-
- protected:
-  SdMmc *parent_;
-};
-
-long double convertBytes(uint64_t, MemoryUnits);
-std::string memory_unit_to_string(MemoryUnits);
-MemoryUnits memory_unit_from_size(size_t);
-std::string format_size(size_t);
-
-}  // namespace sd_mmc_card
-}  // namespace esphome
+}  // namespace sd_file
