@@ -31,17 +31,26 @@ bool SDFileServer::canHandle(AsyncWebServerRequest *request) const {
 
 void SDFileServer::handleRequest(AsyncWebServerRequest *request) {
   ESP_LOGD(TAG, "%s", request->url().c_str());
-  if (str_startswith(std::string(request->url().c_str()), this->build_prefix())) {
-    if (request->method() == HTTP_GET) {
-      this->handle_get(request);
-      return;
-    }
-    if (request->method() == HTTP_DELETE) {
-      this->handle_delete(request);
-      return;
-    }
+
+  if (!str_startswith(std::string(request->url().c_str()), this->build_prefix()))
+    return;
+
+  if (request->method() == HTTP_GET) {
+    this->handle_get(request);
+    return;
+  }
+
+  if (request->method() == HTTP_DELETE) {
+    this->handle_delete(request);
+    return;
+  }
+
+  if (request->method() == HTTP_POST) {
+    // Accept POST so handleUpload() will be triggered
+    return;
   }
 }
+
 
 void SDFileServer::handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index,
                                 uint8_t *data, size_t len, bool final) {
