@@ -11,36 +11,7 @@ static const char *TAG = "sd_file_server";
 
 SDFileServer::SDFileServer(web_server_base::WebServerBase *base) : base_(base) {}
 
-void SDFileServer::setup() {
-  // Keep the original handler registration
-  this->base_->add_handler(this);
-
-  // Register POST + UPLOAD + DELETE handlers
-  auto *server = this->base_->get_server();
-  auto url = this->build_prefix().c_str();
-
-  // POST (upload form submit)
-  server->on(
-      url,
-      HTTP_POST,
-      [this](AsyncWebServerRequest *request) {
-        // POST still goes through handleRequest()
-        this->handleRequest(request);
-      },
-      [this](AsyncWebServerRequest *request, const String &filename, size_t index,
-             uint8_t *data, size_t len, bool final) {
-        // This is the upload data handler
-        this->handleUpload(request, filename.c_str(), index, data, len, final);
-      });
-
-  // DELETE (delete button)
-  server->on(
-      url,
-      HTTP_DELETE,
-      [this](AsyncWebServerRequest *request) {
-        this->handleRequest(request);
-      });
-}
+void SDFileServer::setup() { this->base_->add_handler(this); }
 
 void SDFileServer::dump_config() {
   ESP_LOGCONFIG(TAG, "SD File Server:");
@@ -58,13 +29,6 @@ bool SDFileServer::canHandle(AsyncWebServerRequest *request) const {
   return str_startswith(std::string(request->url().c_str()), this->build_prefix());
 }
 
-bool SDFileServer::canUpload(AsyncWebServerRequest *request) const {
-  ESP_LOGD(TAG, "can upload %s %u", request->url().c_str(),
-           str_startswith(std::string(request->url().c_str()), this->build_prefix()));
-  return str_startswith(std::string(request->url().c_str()), this->build_prefix());
-}
-
-
 void SDFileServer::handleRequest(AsyncWebServerRequest *request) {
   ESP_LOGD(TAG, "%s", request->url().c_str());
   if (str_startswith(std::string(request->url().c_str()), this->build_prefix())) {
@@ -79,7 +43,8 @@ void SDFileServer::handleRequest(AsyncWebServerRequest *request) {
   }
 }
 
-void SDFileServer::handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data, size_t len, bool final) {
+void SDFileServer::handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index,
+                                uint8_t *data, size_t len, bool final) {
   if (!this->upload_enabled_) {
     request->send(401, "application/json", "{ \"error\": \"file upload is disabled\" }");
     return;
@@ -244,7 +209,7 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
       background: #f8f9fa;
       border-radius: 8px;
     }
-    .upload-form input[type="file"] {
+    .upload-form input[type=\"file\"] {
       margin-right: 1rem;
     }
     .breadcrumb {
@@ -262,7 +227,7 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
     .breadcrumb a:not(:last-child)::after {
       display: inline-block;
       margin: 0 .25rem;
-      content: ">";
+      content: \">\";
     }
     .folder {
       color: #0066cc;
@@ -292,13 +257,13 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
   </style>
   </head>
   <body>
-  <div class="container">
-    <div class="header-actions">
+  <div class=\"container\">
+    <div class=\"header-actions\">
       <h1>SD Card Files</h1>
-      <button onclick="window.location.href='/'">Go to web server</button>
+      <button onclick=\"window.location.href='/'\">Go to web server</button>
     </div>
-    <div class="breadcrumb">
-      <a href="/">Home</a>)"));
+    <div class=\"breadcrumb\">
+      <a href=\"/\">Home</a>)"));
 
   std::string current_path = "/";
   std::string relative_path = Path::join(this->url_prefix_, Path::remove_root_path(path, this->root_path_));
@@ -313,37 +278,40 @@ void SDFileServer::handle_index(AsyncWebServerRequest *request, std::string cons
       response->print("</a>");
     }
   }
-  response->print(("</div>"));
+  response->print("</div>");
 
-  if (this->upload_enabled_)
-    response->print(("<div class=\"upload-form\"><form method=\"POST\" enctype=\"multipart/form-data\">"
-                      "<input type=\"file\" name=\"file\"><input type=\"submit\" value=\"upload\"></form></div>"));
+  if (this->upload_enabled_) {
+    response->print("<div class=\"upload-form\"><form method=\"POST\" enctype=\"multipart/form-data\" action=\"");
+    response->print(this->build_prefix().c_str());
+    response->print("\">"
+                    "<input type=\"file\" name=\"file\"><input type=\"submit\" value=\"upload\"></form></div>");
+  }
 
-  response->print(("<table><thead><tr>"
-                    "<th>Name</th>"
-                    "<th>Type</th>"
-                    "<th>Size</th>"
-                    "<th>Actions</th>"
-                    "</tr></thead><tbody>"));
+  response->print("<table><thead><tr>"
+                  "<th>Name</th>"
+                  "<th>Type</th>"
+                  "<th>Size</th>"
+                  "<th>Actions</th>"
+                  "</tr></thead><tbody>");
 
   auto entries = this->sd_mmc_card_->list_directory_file_info(path, 0);
   for (auto const &entry : entries)
     write_row(response, entry);
 
-  response->print(("</tbody></table>"
-                    "<script>"
-                    "function delete_file(path) {fetch(path, {method: \"DELETE\"});}"
-                    "function download_file(path, filename) {"
-                    "fetch(path).then(response => response.blob())"
-                    ".then(blob => {"
-                    "const link = document.createElement('a');"
-                    "link.href = URL.createObjectURL(blob);"
-                    "link.download = filename;"
-                    "link.click();"
-                    "}).catch(console.error);"
-                    "} "
-                    "</script>"
-                    "</body></html>"));
+  response->print("</tbody></table>"
+                  "<script>"
+                  "function delete_file(path) {fetch(path, {method: \"DELETE\"});}"
+                  "function download_file(path, filename) {"
+                  "fetch(path).then(response => response.blob())"
+                  ".then(blob => {"
+                  "const link = document.createElement('a');"
+                  "link.href = URL.createObjectURL(blob);"
+                  "link.download = filename;"
+                  "link.click();"
+                  "}).catch(console.error);"
+                  "} "
+                  "</script>"
+                  "</body></html>");
 
   request->send(response);
 }
