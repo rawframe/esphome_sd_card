@@ -11,7 +11,36 @@ static const char *TAG = "sd_file_server";
 
 SDFileServer::SDFileServer(web_server_base::WebServerBase *base) : base_(base) {}
 
-void SDFileServer::setup() { this->base_->add_handler(this); }
+void SDFileServer::setup() {
+  // Keep the original handler registration
+  this->base_->add_handler(this);
+
+  // Register POST + UPLOAD + DELETE handlers
+  auto *server = this->base_->get_server();
+  auto url = this->build_prefix().c_str();
+
+  // POST (upload form submit)
+  server->on(
+      url,
+      HTTP_POST,
+      [this](AsyncWebServerRequest *request) {
+        // POST still goes through handleRequest()
+        this->handleRequest(request);
+      },
+      [this](AsyncWebServerRequest *request, const String &filename, size_t index,
+             uint8_t *data, size_t len, bool final) {
+        // This is the upload data handler
+        this->handleUpload(request, filename.c_str(), index, data, len, final);
+      });
+
+  // DELETE (delete button)
+  server->on(
+      url,
+      HTTP_DELETE,
+      [this](AsyncWebServerRequest *request) {
+        this->handleRequest(request);
+      });
+}
 
 void SDFileServer::dump_config() {
   ESP_LOGCONFIG(TAG, "SD File Server:");
