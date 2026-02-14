@@ -15,15 +15,6 @@ class SDFileServer : public Component, public AsyncWebHandler {
   void handleRequest(AsyncWebServerRequest *request) override;
   void handleUpload(AsyncWebServerRequest *request, const std::string &filename, size_t index, uint8_t *data, size_t len, bool final) override;
   bool isRequestHandlerTrivial() const override { return false; }
-  bool canUpload(AsyncWebServerRequest *request) override { 
-      return this->canHandle(request); 
-  }
-  
-  bool isRequestHandlerTrivial() override { 
-      return false; 
-  }
-
-
 
   void set_url_prefix(std::string const &);
   void set_root_path(std::string const &);
